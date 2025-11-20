@@ -1,22 +1,9 @@
-// api/blogs.js
-const { MongoClient, ObjectId } = require("mongodb");
-const cloudinary = require("cloudinary").v2;
-const formidable = require("formidable");
+import { MongoClient, ObjectId } from "mongodb";
+import cloudinary from "cloudinary";
+import formidable from "formidable";
 
-// Config
+// MongoDB
 const MONGO_URI = process.env.MONGO_URI;
-const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY;
-const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET;
-
-// Cloudinary setup
-cloudinary.config({
-  cloud_name: CLOUDINARY_CLOUD_NAME,
-  api_key: CLOUDINARY_API_KEY,
-  api_secret: CLOUDINARY_API_SECRET
-});
-
-// MongoDB setup
 let cachedClient = null;
 async function getDb() {
   if (cachedClient) return cachedClient.db("blogDB");
@@ -25,20 +12,32 @@ async function getDb() {
   return client.db("blogDB");
 }
 
-// Helper
+// Cloudinary
+cloudinary.v2.config({ cloudinary_url: process.env.CLOUDINARY_URL });
+
+// Helpers
 function generateExcerpt(content, limit = 160) {
   const flat = (content || "").replace(/\s+/g, " ").trim();
   return flat.length > limit ? flat.slice(0, limit - 3) + "..." : flat;
 }
 
-// Handler
-module.exports = async (req, res) => {
+// CORS headers
+function setCors(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+export default async function handler(req, res) {
+  setCors(res);
+
+  if (req.method === "OPTIONS") return res.status(200).end();
+
   const db = await getDb();
-  const blogs = db.collection("blogs");
 
   if (req.method === "GET") {
-    const allBlogs = await blogs.find().sort({ createdAt: -1 }).toArray();
-    return res.status(200).json(allBlogs);
+    const blogs = await db.collection("blogs").find().sort({ createdAt: -1 }).toArray();
+    return res.json(blogs);
   }
 
   if (req.method === "POST") {
@@ -51,9 +50,7 @@ module.exports = async (req, res) => {
 
       let finalImage = imageUrl || "";
       if (files.imageFile) {
-        const uploaded = await cloudinary.uploader.upload(files.imageFile.filepath, {
-          folder: "blogs"
-        });
+        const uploaded = await cloudinary.v2.uploader.upload(files.imageFile.filepath, { folder: "blogs" });
         finalImage = uploaded.secure_url;
       }
       if (!finalImage) return res.status(400).json({ error: "Provide imageUrl or upload imageFile" });
@@ -66,12 +63,17 @@ module.exports = async (req, res) => {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-
-      const result = await blogs.insertOne(blog);
+      const result = await db.collection("blogs").insertOne(blog);
       return res.status(201).json({ ...blog, id: result.insertedId });
     });
-    return;
   }
 
-  return res.status(405).json({ error: "Method not allowed" });
-};
+  if (req.method === "DELETE") {
+    const { id } = req.query;
+    const result = await db.collection("blogs").deleteOne({ _id: new ObjectId(id) });
+    if (result.deletedCount === 0) return res.status(404).json({ error: "Not found" });
+    return res.json({ success: true });
+  }
+
+  res.status(405).json({ error: "Method not allowed" });
+}
