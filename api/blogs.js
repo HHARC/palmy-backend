@@ -1,8 +1,8 @@
 import { MongoClient, ObjectId } from "mongodb";
-import cloudinary from "cloudinary";
 import formidable from "formidable";
+import cloudinary from "cloudinary";
 
-// MongoDB
+// Mongo
 const MONGO_URI = process.env.MONGO_URI;
 let cachedClient = null;
 async function getDb() {
@@ -13,7 +13,9 @@ async function getDb() {
 }
 
 // Cloudinary
-cloudinary.v2.config({ cloudinary_url: process.env.CLOUDINARY_URL });
+cloudinary.v2.config({
+  cloudinary_url: process.env.CLOUDINARY_URL
+});
 
 // Helpers
 function generateExcerpt(content, limit = 160) {
@@ -21,23 +23,13 @@ function generateExcerpt(content, limit = 160) {
   return flat.length > limit ? flat.slice(0, limit - 3) + "..." : flat;
 }
 
-// CORS headers
-function setCors(res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-}
-
+// Vercel API handler
 export default async function handler(req, res) {
-  setCors(res);
-
-  if (req.method === "OPTIONS") return res.status(200).end();
-
   const db = await getDb();
 
   if (req.method === "GET") {
     const blogs = await db.collection("blogs").find().sort({ createdAt: -1 }).toArray();
-    return res.json(blogs);
+    return res.status(200).json(blogs);
   }
 
   if (req.method === "POST") {
@@ -53,6 +45,7 @@ export default async function handler(req, res) {
         const uploaded = await cloudinary.v2.uploader.upload(files.imageFile.filepath, { folder: "blogs" });
         finalImage = uploaded.secure_url;
       }
+
       if (!finalImage) return res.status(400).json({ error: "Provide imageUrl or upload imageFile" });
 
       const blog = {
@@ -63,17 +56,20 @@ export default async function handler(req, res) {
         createdAt: new Date(),
         updatedAt: new Date()
       };
+
       const result = await db.collection("blogs").insertOne(blog);
       return res.status(201).json({ ...blog, id: result.insertedId });
     });
+    return;
   }
 
   if (req.method === "DELETE") {
     const { id } = req.query;
     const result = await db.collection("blogs").deleteOne({ _id: new ObjectId(id) });
     if (result.deletedCount === 0) return res.status(404).json({ error: "Not found" });
-    return res.json({ success: true });
+    return res.status(200).json({ success: true });
   }
 
-  res.status(405).json({ error: "Method not allowed" });
+  res.setHeader("Allow", ["GET", "POST", "DELETE"]);
+  res.status(405).end(`Method ${req.method} Not Allowed`);
 }
