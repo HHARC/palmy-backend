@@ -32,7 +32,14 @@ function generateExcerpt(content, limit = 160) {
 const app = express();
 
 // ✅ Allow all origins
-app.use(cors({ origin: "*" }));
+app.use(
+  cors({
+    origin: ["http://localhost:5174", "https://palmy-blogs-panel.vercel.app"], // your frontend URLs
+    methods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true, // allow cookies if needed
+  })
+);
 app.use(express.json());
 
 // Routes
