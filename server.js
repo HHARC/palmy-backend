@@ -31,15 +31,8 @@ function generateExcerpt(content, limit = 160) {
 
 const app = express();
 
-// ✅ Proper CORS setup
-app.use(
-  cors({
-    origin: ["http://localhost:5174", "https://your-frontend-domain.com"], // add your frontend URLs here
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-
+// ✅ Allow all origins
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
 // Routes
