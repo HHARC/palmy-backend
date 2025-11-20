@@ -8,7 +8,6 @@ const formidable = require("formidable");
 // Config
 const PORT = process.env.PORT || 4000;
 
-
 // MongoDB
 const MONGO_URI = process.env.MONGO_URI;
 let cachedClient = null;
@@ -31,7 +30,16 @@ function generateExcerpt(content, limit = 160) {
 }
 
 const app = express();
-app.use(cors());
+
+// ✅ Proper CORS setup
+app.use(
+  cors({
+    origin: ["http://localhost:5174", "https://your-frontend-domain.com"], // add your frontend URLs here
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(express.json());
 
 // Routes
