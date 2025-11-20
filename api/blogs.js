@@ -1,10 +1,13 @@
+// /api/blogs.js
 import { MongoClient, ObjectId } from "mongodb";
 import formidable from "formidable";
 import cloudinary from "cloudinary";
 
-// Mongo
+cloudinary.v2.config({ cloudinary_url: process.env.CLOUDINARY_URL });
+
 const MONGO_URI = process.env.MONGO_URI;
 let cachedClient = null;
+
 async function getDb() {
   if (cachedClient) return cachedClient.db("blogDB");
   const client = await MongoClient.connect(MONGO_URI);
@@ -12,19 +15,14 @@ async function getDb() {
   return client.db("blogDB");
 }
 
-// Cloudinary
-cloudinary.v2.config({
-  cloudinary_url: process.env.CLOUDINARY_URL
-});
-
-// Helpers
-function generateExcerpt(content, limit = 160) {
-  const flat = (content || "").replace(/\s+/g, " ").trim();
-  return flat.length > limit ? flat.slice(0, limit - 3) + "..." : flat;
-}
-
-// Vercel API handler
 export default async function handler(req, res) {
+  // ✅ CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") return res.status(200).end();
+
   const db = await getDb();
 
   if (req.method === "GET") {
@@ -36,7 +34,6 @@ export default async function handler(req, res) {
     const form = new formidable.IncomingForm();
     form.parse(req, async (err, fields, files) => {
       if (err) return res.status(500).json({ error: err.message });
-
       const { heading, content, imageUrl } = fields;
       if (!heading || !content) return res.status(400).json({ error: "heading and content required" });
 
@@ -51,16 +48,15 @@ export default async function handler(req, res) {
       const blog = {
         heading,
         content,
-        excerpt: generateExcerpt(content),
+        excerpt: content.slice(0, 160),
         imageUrl: finalImage,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const result = await db.collection("blogs").insertOne(blog);
       return res.status(201).json({ ...blog, id: result.insertedId });
     });
-    return;
   }
 
   if (req.method === "DELETE") {
@@ -69,7 +65,4 @@ export default async function handler(req, res) {
     if (result.deletedCount === 0) return res.status(404).json({ error: "Not found" });
     return res.status(200).json({ success: true });
   }
-
-  res.setHeader("Allow", ["GET", "POST", "DELETE"]);
-  res.status(405).end(`Method ${req.method} Not Allowed`);
 }
