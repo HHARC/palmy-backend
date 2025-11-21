@@ -1,4 +1,9 @@
 {
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
   "dependencies": {
     "cloudinary": "^2.8.0",
     "cors": "^2.8.5",
@@ -8,5 +13,8 @@
     "mongodb": "^7.0.0",
     "multer": "^2.0.2",
     "nanoid": "^5.1.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
   }
 }
