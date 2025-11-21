@@ -1,0 +1,23 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "./index.js",
+            "use": "@vercel/node"
+        }
+    ],
+    
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "src/server.js",
+            "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            "headers": {
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Expose-Headers": "Set-Cookie",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, Cookie, Set-Cookie"
+            }
+        }
+    ]
+}
