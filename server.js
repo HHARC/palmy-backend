@@ -3,13 +3,18 @@ import express from 'express';
 import cors from 'cors';
 import { MongoClient, ObjectId } from 'mongodb';
 import formidable from 'formidable';
+import fs from 'fs';
+import path from 'path';
 
 // ------------------ CONFIG ------------------
 const PORT = 4000;
-
-// Directly putting MongoDB URL here (instead of .env)
 const MONGO_URI = 'mongodb+srv://hharc123_db_user:biqrUSR19hTNjV1a@blogs.5k9mhsx.mongodb.net/blogDB?retryWrites=true&w=majority';
 
+// Ensure uploads folder exists
+const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
+
+// ------------------ MONGODB ------------------
 let cachedClient = null;
 async function getDb() {
   if (cachedClient) return cachedClient.db('blogDB');
@@ -27,9 +32,10 @@ function generateExcerpt(content, limit = 160) {
 // ------------------ SERVER ------------------
 const app = express();
 app.use(cors({ origin: '*' }));
-
-// To parse JSON (for GET requests, etc.)
 app.use(express.json());
+
+// Serve uploaded images
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 // ------------------ ROUTES ------------------
 
@@ -45,9 +51,10 @@ app.get('/api/blogs', async (_req, res) => {
   }
 });
 
-// POST blog with image URL or uploaded file
+// POST blog with image upload
 app.post('/api/blogs', (req, res) => {
-  const form = new formidable.IncomingForm();
+  const form = formidable({ multiples: false, uploadDir: UPLOAD_DIR, keepExtensions: true });
+
   form.parse(req, async (err, fields, files) => {
     if (err) return res.status(500).json({ error: err.message });
 
@@ -58,11 +65,11 @@ app.post('/api/blogs', (req, res) => {
         return res.status(400).json({ error: 'heading and content required' });
       }
 
-      // If file is uploaded, we can just save the file path (or base64) if needed
+      // Handle uploaded file
       let finalImage = imageUrl || '';
       if (files.imageFile) {
-        // For simplicity, just take the local file path
-        finalImage = `/uploads/${files.imageFile.newFilename || files.imageFile.originalFilename}`;
+        const file = files.imageFile;
+        finalImage = `/uploads/${path.basename(file.filepath)}`;
       }
 
       const db = await getDb();
