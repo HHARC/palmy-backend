@@ -6,6 +6,8 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "formidable": "^3.5.4",
-    "mongodb": "^7.0.0"
+    "mongodb": "^7.0.0",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2"
   }
 }
