@@ -67,21 +67,24 @@ app.get('/api/blogs/:id', async (req, res) => {
 // POST blog (with image upload)
 app.post('/api/blogs', (req, res) => {
   const form = new formidable.IncomingForm();
-
   form.parse(req, async (err, fields, files) => {
+    console.log('fields:', fields);
+    console.log('files:', files);
+
     if (err) return res.status(500).json({ error: err.message });
 
     try {
       const { heading, content, imageUrl } = fields;
-      if (!heading || !content) return res.status(400).json({ error: 'heading and content required' });
-
       let finalImage = imageUrl || '';
+
       if (files.imageFile) {
-        // Upload image to Cloudinary
+        console.log('Uploading image to Cloudinary...');
         const uploaded = await cloudinary.uploader.upload(files.imageFile.filepath, { folder: 'blogs' });
+        console.log('Cloudinary upload result:', uploaded);
         finalImage = uploaded.secure_url;
       }
 
+      if (!heading || !content) return res.status(400).json({ error: 'heading and content required' });
       if (!finalImage) return res.status(400).json({ error: 'Provide imageUrl or upload imageFile' });
 
       const db = await getDb();
@@ -91,17 +94,18 @@ app.post('/api/blogs', (req, res) => {
         excerpt: generateExcerpt(content),
         imageUrl: finalImage,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       const result = await db.collection('blogs').insertOne(blog);
       res.status(201).json({ ...blog, id: result.insertedId });
     } catch (error) {
-      console.error(error);
+      console.error('POST /api/blogs error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
 });
+
 
 // DELETE blog
 app.delete('/api/blogs/:id', async (req, res) => {
